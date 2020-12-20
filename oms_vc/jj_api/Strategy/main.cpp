@@ -7,43 +7,11 @@
 #include "strategy.h"
 #include "strategy_common.h"
 #include "trade_item.h"
+#include "share_memory_util.h"
 #include <tbb/concurrent_hash_map.h>
 using namespace std;
 
-
-void test_pub()
-{
-	Tick t;
-	strcpy_s(t.symbol, "600036.SH");
-	t.created_at = 123456.7891;
-	t.open = 23.765;
-	t.price = 24.12345;
-	t.high = 25;
-	t.low = 23;
-	t.cum_amount = 779874932;
-	t.cum_position = 876590;
-	t.cum_volume = 54321;
-	t.last_amount = 12345;
-	t.last_volume = 15;
-	t.trade_type = 250;
-	for (int i = 0; i < 10; ++i)
-	{
-		t.quotes[i].ask_price = 25 + (i + 1) * 0.001;
-		t.quotes[i].bid_price = 25 - (i - 1) *0.001;
-		t.quotes[i].ask_volume = 100 + i;
-		t.quotes[i].bid_volume = 100 + i;
-	}
-
-	char buf[1024];
-	int len;
-	swap_tick_to_string(t, buf, len);
-	while (1)
-	{
-		Sleep(2000);
-		//Zmq_Pub::get_instance()->publish(buf, len);
-		rb_ptr->push(t);
-	}
-}
+const int ORDER_PAGE_LEN = 1000000;
 
 class MyStrategy :public Strategy
 {
@@ -51,8 +19,30 @@ public:
 	MyStrategy() {}
 	~MyStrategy() {}
 
-	//重写on_init事件，进行策略开发
-	void on_init()
+	void init_oms()
+	{
+		int date = get_date_int();
+		std::string fn = std::to_string(date) + "_oms";
+		bool is_exit = share_memory_util::FileExists(fn);
+
+		long long shm_size = sizeof(slr_rb<Order>) + ORDER_PAGE_LEN * sizeof(Order);
+		moms = (slr_rb<Order>*)share_memory_util::get_instance()->LoadPageBuffer(fn, shm_size, true, true);
+
+		if (moms == nullptr)
+		{
+			std::cout << "oms create fail exit" << std::endl;
+			return;
+		}
+
+		moms->ring_size = ORDER_PAGE_LEN;
+
+		if (false == is_exit)
+		{
+			moms->sequence.m_sequence = 0;
+		}
+	}
+
+	void init_sub()
 	{
 		cout << "从当前目录读取sub.ini(订阅目录)" << endl;
 		ifstream myfile("./sub.ini");
@@ -68,9 +58,13 @@ public:
 			this->subscribe(temp.data(), "tick");
 		}
 		myfile.close();
+	}
 
-
-
+	//重写on_init事件，进行策略开发
+	void on_init()override
+	{
+		init_sub();
+		init_oms();
 		return;
 	}
 
@@ -100,6 +94,26 @@ public:
 		}
 	}
 
+	//委托变化
+	virtual void on_order_status(Order *order)
+	{
+	
+	}
+	//执行回报
+	virtual void on_execution_report(ExecRpt *rpt)
+	{
+	
+	}
+
+	Order* get_new_order()
+	{
+		if (moms != nullptr)
+		{
+			return &moms->ring[(++moms->sequence.m_sequence)%(moms->ring_size)];
+		}
+
+	}
+
 	void create_algo_order(trade_item*item, const int target_pos)
 	{
 		if (target_pos < 0)
@@ -125,6 +139,7 @@ public:
 private:
 	tbb::concurrent_hash_map<uint64_t, trade_item*> m_trade_item;
 	tbb::concurrent_hash_map<uint64_t, Order*> mbook;
+	slr_rb<Order>* moms;
 };
 
 int main(int argc, char *argv[])
