@@ -46,11 +46,11 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>..\gmsdk\include;D:\local\code\dingding\oms_vc\ZMQ_Pub;D:\local\code\dingding\oms_vc\Tool\zmq404\include;D:\local\code\dingding\oms_vc\Tool\tbb\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\gmsdk\include;..\..\ZMQ_Pub;..\..\Tool\zmq404\include;..\..\Tool\tbb\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\gmsdk\lib\win32;$(Configuration);D:\local\code\dingding\oms_vc\Tool\tbb\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\gmsdk\lib\win32;$(Configuration);..\..\Tool\tbb\lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>gmsdk.lib;ZMQ_Pub.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
@@ -64,7 +64,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>..\gmsdk\include;D:\local\code\dingding\oms_vc\ZMQ_Pub;D:\local\code\dingding\oms_vc\Tool\zmq404\include;D:\local\code\dingding\oms_vc\Tool\tbb\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\gmsdk\include;..\..\ZMQ_Pub;..\..\Tool\zmq404\include;..\..\Tool\tbb\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
