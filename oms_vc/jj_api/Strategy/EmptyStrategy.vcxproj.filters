@@ -18,12 +18,18 @@
     <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="share_memory_util.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="strategy_common.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="trade_item.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="share_memory_util.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

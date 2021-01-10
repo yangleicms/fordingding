@@ -13,6 +13,10 @@ using namespace std;
 
 const int ORDER_PAGE_LEN = 1000000;
 
+int j = -1;
+
+Account m_acc;
+
 class MyStrategy :public Strategy
 {
 public:
@@ -63,6 +67,11 @@ public:
 	//重写on_init事件，进行策略开发
 	void on_init()override
 	{
+		auto acclist = get_accounts();
+		if (acclist->count() > 0)
+		{
+			m_acc = acclist->at(0);
+		}
 		init_sub();
 		init_oms();
 		return;
@@ -72,7 +81,7 @@ public:
 	{
 		Tick t = *tick;
 		rb_ptr->push(t);
-		std::cout << t.symbol << " " << t.price << std::endl;
+		//std::cout << t.symbol << " " << t.price << std::endl;
 
 		auto hv = BKDR_Hash_Compare::hash(t.symbol);
 		tbb::concurrent_hash_map<uint64_t, trade_item*>::accessor wa;
@@ -91,18 +100,22 @@ public:
 
 			m_trade_item.insert(wa, hv);
 			wa->second = ptr;
+			if (++j <= 0)
+			{
+				create_algo_order(ptr, 100);
+			}
 		}
 	}
 
 	//委托变化
-	virtual void on_order_status(Order *order)
+	virtual void on_order_status(Order *order)override
 	{
-	
+		std::cout<<order->order_id<<std::endl;
 	}
 	//执行回报
-	virtual void on_execution_report(ExecRpt *rpt)
+	virtual void on_execution_report(ExecRpt *rpt)override
 	{
-	
+		std::cout<<rpt->exec_id<<std::endl;
 	}
 
 	Order* get_new_order()
@@ -128,11 +141,13 @@ public:
 
 		if (tn > 0)
 		{
-			this->order_volume(item->id, tn, OrderSide_Buy, OrderType_Limit, PositionEffect_Open, item->tick.quotes[0].ask_price);
+			Order res = this->order_volume(item->id, tn, OrderSide_Buy, OrderType_Limit, PositionEffect_Open, item->tick.quotes[0].ask_price, m_acc.account_id);
+			std::cout << res.symbol << std::endl;
+			std::cout << res.order_id << std::endl;
 		}
 		else
 		{
-			this->order_volume(item->id, abs(tn), OrderSide_Sell, OrderType_Limit, PositionEffect_Open, item->tick.quotes[0].bid_price);
+			this->order_volume(item->id, abs(tn), OrderSide_Sell, OrderType_Limit, PositionEffect_Open, item->tick.quotes[0].bid_price, m_acc.account_id);
 		}
 	}
 
