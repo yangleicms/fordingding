@@ -12,9 +12,7 @@
 using namespace std;
 
 const int ORDER_PAGE_LEN = 1000000;
-
 int j = -1;
-
 Account m_acc;
 
 class MyStrategy :public Strategy
@@ -64,6 +62,39 @@ public:
 		myfile.close();
 	}
 
+	void req_pos()
+	{
+		DataArray<Position>* pos = get_position(m_acc.account_id);
+		int len = pos->count();
+		if (len > 0)
+		{
+			for (int i = 0; i < len; ++i)
+			{
+				auto Pos = pos->at(i);
+				auto hv = BKDR_Hash_Compare::hash(Pos.symbol);
+				tbb::concurrent_hash_map<uint64_t, trade_item*>::accessor wa;
+				bool res = m_trade_item.find(wa, hv);
+				if (res)
+				{
+					wa->second->stock_pos = Pos.volume;
+					wa->second->stock_can_sell = Pos.available;
+				}
+				else
+				{
+					auto ptr = new trade_item;
+
+					ptr->hash_val = hv;
+					memcpy(ptr->id, Pos.symbol, 32);
+					ptr->stock_pos = Pos.volume;
+					ptr->stock_can_sell = Pos.available;
+
+					m_trade_item.insert(wa, hv);
+					wa->second = ptr;
+				}
+			}
+		}
+	}
+
 	//重写on_init事件，进行策略开发
 	void on_init()override
 	{
@@ -74,6 +105,9 @@ public:
 		}
 		init_sub();
 		init_oms();
+		req_pos();
+
+		this->start_work();
 		return;
 	}
 
@@ -110,12 +144,33 @@ public:
 	//委托变化
 	virtual void on_order_status(Order *order)override
 	{
-		std::cout<<order->order_id<<std::endl;
+		auto hv = BKDR_Hash_Compare::hash(order->symbol);
+		tbb::concurrent_hash_map<uint64_t, trade_item*>::accessor wa;
+		bool res = m_trade_item.find(wa, hv);
+		if (res)
+		{
+
+		}
+		else
+		{
+
+			
+		}
 	}
 	//执行回报
 	virtual void on_execution_report(ExecRpt *rpt)override
 	{
-		std::cout<<rpt->exec_id<<std::endl;
+		//std::cout<<rpt->exec_id<<std::endl;
+		auto hv = BKDR_Hash_Compare::hash(rpt->symbol);
+		tbb::concurrent_hash_map<uint64_t, trade_item*>::accessor wa;
+		bool res = m_trade_item.find(wa, hv);
+		if (res)
+		{
+			if (rpt->side == OrderSide_Buy)
+				wa->second->stock_pos += rpt->volume;
+			if(rpt->side == OrderSide_Sell)
+				wa->second->stock_pos -= rpt->volume;
+		}
 	}
 
 	Order* get_new_order()
@@ -142,8 +197,9 @@ public:
 		if (tn > 0)
 		{
 			Order res = this->order_volume(item->id, tn, OrderSide_Buy, OrderType_Limit, PositionEffect_Open, item->tick.quotes[0].ask_price, m_acc.account_id);
-			std::cout << res.symbol << std::endl;
-			std::cout << res.order_id << std::endl;
+			//std::cout << res.symbol << std::endl;
+			//std::cout << res.order_id << std::endl;
+			auto hv = BKDR_Hash_Compare::hash(res.order_id);
 		}
 		else
 		{
@@ -151,10 +207,35 @@ public:
 		}
 	}
 
+	void start_work()
+	{
+		if (mwork.joinable() == false)
+		{
+			std::thread t(std::bind(&MyStrategy::work, this));
+			mwork.swap(t);
+		}
+	}
+
+	void work()
+	{
+		long long tm = 0;
+		while (1)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			++tm;
+			if (tm % 30 == 0)
+			{
+				req_pos();
+				continue;
+			}
+			//这里加入处理zmq接收下单的代码
+		}
+	}
 private:
 	tbb::concurrent_hash_map<uint64_t, trade_item*> m_trade_item;
 	tbb::concurrent_hash_map<uint64_t, Order*> mbook;
 	slr_rb<Order>* moms;
+	std::thread mwork;
 };
 
 int main(int argc, char *argv[])
@@ -164,8 +245,8 @@ int main(int argc, char *argv[])
 	//打开推送行情的线程
 	strategy_common::get_instance()->start();
 
-	std::thread t1(test_pub);
-	t1.detach();
+	//std::thread t1(test_pub);
+	//t1.detach();
 
 	MyStrategy s;
 	s.set_strategy_id("0beb061e-3702-11eb-8dfa-d09466ed08cd");

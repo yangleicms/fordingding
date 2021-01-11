@@ -76,6 +76,14 @@ static int get_date_int()
 	return 10000 * year + month * 100 + day;
 }
 
+static bool is_final_orderStatus(Order*ord)
+{
+	if (ord->status == OrderStatus_Filled || ord->status == OrderStatus_Canceled || ord->status == OrderStatus_Rejected ||
+		ord->status == OrderStatus_Expired)
+		return true;
+	return false;
+}
+
 
 class strategy_common
 {
